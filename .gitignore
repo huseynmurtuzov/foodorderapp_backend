@@ -361,3 +361,21 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Hassas dosyalar
+appsettings.json
+appsettings.Development.json
+
+# Kullanıcı bilgileri
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Build ve bağımlılık dosyaları
+bin/
+obj/
+node_modules/
+
+# Logs & cache
+logs/
+*.log
