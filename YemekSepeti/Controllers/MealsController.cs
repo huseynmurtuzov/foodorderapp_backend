@@ -209,5 +209,15 @@ namespace YemekSepeti.Controllers
 
         }
 
+        [HttpGet("/searchMeal/{query}")]
+        public async Task<IActionResult> SearchMeal(string query)
+        {
+            List<Meal> meals = _context.Meals.Where(m => m.Name.Contains(query)).ToList();
+            if(meals.Count() == 0)
+            {
+                return Ok($"There is no meal called '{query}'");
+            }
+            return Ok(meals);
+        } 
     }
 }

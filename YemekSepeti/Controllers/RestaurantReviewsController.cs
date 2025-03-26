@@ -150,7 +150,7 @@ namespace YemekSepeti.Controllers
 
         }
         [HttpGet("{restaurantId}/reviewsByRestaurant")]
-        [Authorize(Roles = "SuperAdmin,Restaurant,Customer")]
+   
         //restorana gore yorumlari getirme
         public async Task<IActionResult> GetReviewsByRestaurant(int restaurantId)
         {

@@ -5,6 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System;
 using YemekSepeti.DTO;
+using YemekSepeti.Functions;
 using YemekSepeti.Models;
 
 namespace YemekSepeti.Controllers
@@ -36,6 +37,7 @@ namespace YemekSepeti.Controllers
             IdentityUser<int> delivery = await _userManager.FindByIdAsync(id.ToString());
             DeliveryPersonnel? exactDeliveryPersonnel = await _context.DeliveryPersonnel
                 .Include(d => d.Orders)
+                .ThenInclude(o => o.Meals)
                 .FirstOrDefaultAsync(d => d.Email == delivery.Email);
 
             if (exactDeliveryPersonnel == null)
@@ -58,9 +60,21 @@ namespace YemekSepeti.Controllers
                         TotalAmount = o.TotalAmount,
                         CustomerId = o.CustomerId,
                         RestaurantId = o.RestaurantId,
+                        Meals = o.Meals
+                                .Select(m => m.Name)
+                                .ToList(),
+                        OrderCustomerName = _context.Customers.FirstOrDefault(c => c.Id == o.CustomerId).Name,
+                        OrderCustomerPhoneNumber = _context.Customers.FirstOrDefault(c => c.Id == o.CustomerId).PhoneNumber,
+                        OrderCustomerAddress = _context.Customers.FirstOrDefault(c => c.Id == o.CustomerId).Address,
+                        OrderRestaurantName = _context.Restaurants.FirstOrDefault(r => r.Id == o.RestaurantId).Name,
+                        OrderRestaurantPhoneNumber = _context.Restaurants.FirstOrDefault(r => r.Id == o.RestaurantId).PhoneNumber,
+
                     })
-                    .ToList()
-            };
+                    .ToList(),
+                
+
+
+        };
 
             return Ok(data);
         }
@@ -81,6 +95,10 @@ namespace YemekSepeti.Controllers
                 if (exactDeliveryPersonnel == null)
                 {
                     return BadRequest("There is no delivery personnel with given id");
+                }
+                if (HelperFunctions.Check(entity) == false)
+                {
+                    return BadRequest("Enter proper restaurant details");
                 }
                 exactDeliveryPersonnel.Name = entity.Name;
                 exactDeliveryPersonnel.PhoneNumber = entity.PhoneNumber;

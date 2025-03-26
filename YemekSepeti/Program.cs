@@ -6,10 +6,11 @@ using Microsoft.OpenApi.Models;
 using System.Data;
 using System.Text;
 using YemekSepeti.Models;
+using YemekSepeti.Services;
 //using YemekSepeti.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddTransient<IEmailSender, EmailSender>();
 
 builder.Services.AddCors(options =>
 {
@@ -86,6 +87,11 @@ builder.Services.AddAuthentication(x =>
         ),
         ValidateLifetime = true,
     };
+
+});
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.SignIn.RequireConfirmedEmail = true; // Email doğrulaması gerekli
 });
 
 var app = builder.Build();

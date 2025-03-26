@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using YemekSepeti.DTO;
+using YemekSepeti.Functions;
 using YemekSepeti.Models;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -137,6 +138,10 @@ namespace YemekSepeti.Controllers
                 {
                     return NotFound("There is no customer with the given id!");
                 }
+                if (HelperFunctions.Check(entity) == false)
+                {
+                    return BadRequest("Enter proper restaurant details");
+                }
 
                 exactCustomer.Name = entity.Name;
                 exactCustomer.PhoneNumber = entity.PhoneNumber;
@@ -219,7 +224,7 @@ namespace YemekSepeti.Controllers
         public async Task<IActionResult> GetCustomerOrders(int id)
         {
             var currentUser = await _userManager.GetUserAsync(User);
-            var exactCustomer = _context.Customers.Include(c => c.Orders).FirstOrDefault(c => c.Email == currentUser.Email);
+            var exactCustomer = _context.Customers.Include(c => c.Orders).ThenInclude(o => o.Meals).FirstOrDefault(c => c.Email == currentUser.Email);
             if (User.IsInRole("SuperAdmin") || currentUser.Id == id)
             {
                 if (exactCustomer == null)
@@ -229,13 +234,22 @@ namespace YemekSepeti.Controllers
                 var orders = await _context.Orders
         .FromSqlRaw("EXEC up_MusteriSiparisleriniAl @CustomerId = {0}", exactCustomer.Id)
         .ToListAsync();
-                var orders1 = orders.Select(o => new OrderDTO
+                var orders1 = orders.Select(o => new DeliveryOrderDTO
                 {
+                    Id=o.Id,
                     TotalAmount = o.TotalAmount,
                     Status = o.Status, 
                     OrderDate = o.OrderDate,
                     CustomerId = o.CustomerId,
-                    RestaurantId = o.RestaurantId
+                    RestaurantId = o.RestaurantId,
+                    Meals = o.Meals
+                                .Select(m => m.Name)
+                                .ToList(),
+                    OrderCustomerName = _context.Customers.FirstOrDefault(c => c.Id == o.CustomerId).Name,
+                    OrderCustomerPhoneNumber = _context.Customers.FirstOrDefault(c => c.Id == o.CustomerId).PhoneNumber,
+                    OrderCustomerAddress = _context.Customers.FirstOrDefault(c => c.Id == o.CustomerId).Address,
+                    OrderRestaurantName = _context.Restaurants.FirstOrDefault(r => r.Id == o.RestaurantId).Name,
+                    OrderRestaurantPhoneNumber = _context.Restaurants.FirstOrDefault(r => r.Id == o.RestaurantId).PhoneNumber,
                 }).ToList();
                 return Ok(orders1);
             }

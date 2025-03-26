@@ -191,6 +191,16 @@ BEGIN
 	WHERE Id IN (SELECT Id from inserted)
 END;
 
+ALTER TRIGGER trg_SiparisDurumunuSetEt
+ON Orders
+AFTER INSERT
+AS
+BEGIN
+	UPDATE ORDERS 
+	SET Status = 'pending'
+	WHERE Id IN (SELECT Id from inserted)
+END;
+
 CREATE TRIGGER trg_RestoranRatingiGuncelle
 ON RestaurantReviews
 AFTER INSERT, UPDATE

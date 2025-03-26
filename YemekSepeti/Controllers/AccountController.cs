@@ -6,7 +6,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using YemekSepeti.DTO;
+using YemekSepeti.Functions;
 using YemekSepeti.Models;
+using YemekSepeti.Services;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace YemekSepeti.Controllers
 {
@@ -19,13 +22,15 @@ namespace YemekSepeti.Controllers
         private UserManager<IdentityUser<int>> _userManager;
         //private RoleManager<IdentityRole<int>> _roleManager;
         private SignInManager<IdentityUser<int>> _signInManager;
+        private readonly IEmailSender _emailSender;
 
-        public AccountController(YemekSepetContext context, UserManager<IdentityUser<int>> userManager, SignInManager<IdentityUser<int>> signInManager, IConfiguration configuration)
+        public AccountController(YemekSepetContext context, UserManager<IdentityUser<int>> userManager, SignInManager<IdentityUser<int>> signInManager, IConfiguration configuration, IEmailSender emailSender)
         {
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
+            _emailSender = emailSender;
         }
         [HttpPost("Login")]
         public async Task<IActionResult> Login(LoginDTO data)
@@ -36,6 +41,10 @@ namespace YemekSepeti.Controllers
                 if (user != null)
                 {
                     await _signInManager.SignOutAsync();
+                    if (!user.EmailConfirmed)
+                    {
+                        return Unauthorized("User account is not confirmed!");
+                    }
                     var result = await _signInManager.PasswordSignInAsync(user, data.Password, true, true);
                     if (result.Succeeded)
                     {
@@ -67,7 +76,7 @@ namespace YemekSepeti.Controllers
             }
             else
             {
-                ModelState.AddModelError("", "Wrong email or password");
+                ModelState.AddModelError("", "Wrong email or password,or email is not confirmed yet!");
                 return BadRequest(ModelState);
             }
         }
@@ -104,7 +113,8 @@ namespace YemekSepeti.Controllers
                 UserName = data.Name,
                 Email = data.Email,
                 PhoneNumber = data.PhoneNumber,
-                SecurityStamp = Guid.NewGuid().ToString()
+                SecurityStamp = Guid.NewGuid().ToString(),
+                EmailConfirmed = false
             };
             Customer entity = new Customer()
             {
@@ -118,6 +128,7 @@ namespace YemekSepeti.Controllers
                 Restaurants = new List<Restaurant>()
             };
 
+
             var result = await _userManager.CreateAsync(user, data.Password);
             if (result.Succeeded)
             {
@@ -129,7 +140,7 @@ namespace YemekSepeti.Controllers
 
                 _context.Customers.Add(entity);
                 await _context.SaveChangesAsync();
-
+                await _emailSender.SendEmailAsync(data.Email, "Email Confirmation", $"https://localhost:7092/api/Account/ConfirmEmail/{data.Email}");
                 return StatusCode(201);
             }
             else
@@ -181,8 +192,9 @@ namespace YemekSepeti.Controllers
                 });
                 ;
                 await _context.SaveChangesAsync();
-
+                await _emailSender.SendEmailAsync(data.Email, "Email Confirmation", $"https://localhost:7092/api/Account/ConfirmEmail/{data.Email}");
                 return StatusCode(201);
+
             }
             else
             {
@@ -224,7 +236,7 @@ namespace YemekSepeti.Controllers
                 });
                 ;
                 await _context.SaveChangesAsync();
-
+                await _emailSender.SendEmailAsync(data.Email, "Email Confirmation", $"https://localhost:7092/api/Account/ConfirmEmail/{data.Email}");
                 return StatusCode(201);
             }
             else
@@ -233,6 +245,42 @@ namespace YemekSepeti.Controllers
             }
 
         }
+        [HttpGet("ConfirmEmail/{email}")]
+        public async Task<IActionResult> ConfirmEmail([FromRoute] string email)
+        {
+            IdentityUser<int> user = await _userManager.FindByEmailAsync(email);
+            user.EmailConfirmed = true;
+            var result = await _userManager.UpdateAsync(user);
+            return Redirect("http://localhost:3000/emailConfirmed");
+        }
+        [HttpGet("ForgotPassword/{email}")]
+        public async Task<IActionResult> ForgotPassword([FromRoute] string email)
+        {
+            IdentityUser<int> user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                return BadRequest($"There is no account with that email:{email}");
+            }
+            await _emailSender.SendEmailAsync(email, "Email Confirmation", $"http://localhost:3000/ForgotPasswordConfirm/{email}");
+            return StatusCode(201);
+
+        }
+        [HttpPost("ForgotPasswordConfirm/{email}")]
+        public async Task<IActionResult> ForgotPasswordConfirm([FromRoute] string email, [FromBody] ForgotPasswordDTO data)
+        {
+            IdentityUser<int> user = await _userManager.FindByEmailAsync(email);
+            await _userManager.RemovePasswordAsync(user);
+            var result = await _userManager.AddPasswordAsync(user, data.Password);
+            if (result.Succeeded)
+            {
+                return Ok();
+            }
+            else
+            {
+                return BadRequest(result.Errors);
+            }
+        }
+
         //[HttpGet("GetCurrentUser")]
         //public async Task<AppUser> GetCurrentUser(LoginDTO data)
         //{

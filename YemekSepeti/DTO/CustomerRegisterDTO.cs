@@ -18,5 +18,6 @@ namespace YemekSepeti.DTO
         public virtual ICollection<RestaurantReview> RestaurantReviews { get; set; } = new List<RestaurantReview>();
 
         public virtual ICollection<Restaurant> Restaurants { get; set; } = new List<Restaurant>();
+
     }
 }

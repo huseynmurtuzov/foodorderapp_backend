@@ -22,4 +22,12 @@ public class DeliveryOrderDTO
     public int CustomerId { get; set; }
 
     public int RestaurantId { get; set; }
+    public string Name { get; set; }
+    public List<string> Meals { get; set; }
+    public string OrderCustomerName { get; set; }
+    public string OrderCustomerPhoneNumber { get; set; }
+    public string OrderCustomerAddress { get; set; }
+    public string OrderRestaurantName { get; set; }
+    public string OrderRestaurantPhoneNumber { get; set; }
+
 }

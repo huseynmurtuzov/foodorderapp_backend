@@ -55,6 +55,25 @@ namespace YemekSepeti.Controllers
             _context.SaveChanges();
             return Ok("Order set as delivered!");
         }
+        [HttpPut("{id}/setAsPrepared")]
+        [Authorize(Roles = "SuperAdmin, Restaurant")]
+        //siparis durumunu 'prepared' olarak set etme
+        public async Task<IActionResult> SetAsPrepared(int id)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            Order exactOrder = _context.Orders.FirstOrDefault(o => o.Id == id);
+            if(currentUser.Email != exactOrder.Restaurant.Email)
+            {
+                return BadRequest("You have no right to set this order as prepared");
+            }
+            if (exactOrder == null)
+            {
+                return BadRequest("No order with given id");
+            }
+            exactOrder.Status = "Prepared";
+            _context.SaveChanges();
+            return Ok("Order set as Prepared!");
+        }
         [HttpPost]
         [Authorize(Roles = "SuperAdmin, Customer")]
         //siparis verme 
@@ -97,7 +116,7 @@ namespace YemekSepeti.Controllers
                     });
                 }
                 var delivery = await _userManager.FindByIdAsync(idList.First().ToString());
-                var restaurant1 = await _userManager.FindByIdAsync(entity.RestaurantId.ToString());
+                var restaurant1 = await _context.Restaurants.FirstOrDefaultAsync(r => r.Id == entity.RestaurantId);
 
 
 
@@ -105,7 +124,7 @@ namespace YemekSepeti.Controllers
                 {
                     OrderDate = entity.OrderDate,
                     TotalAmount = entity.TotalAmount,
-                    Status = entity.Status,
+                    Status = "pending",
                     CustomerId = Convert.ToInt32(entity.CustomerId),
                     RestaurantId = entity.RestaurantId,
                     DeliveryPersonelId = entity.DeliveryPersonelId, 
@@ -139,8 +158,8 @@ namespace YemekSepeti.Controllers
                 return Forbid("Only the SuperAdmin or the customer themselves can add this information.");
             }
         }
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "SuperAdmin, Customer,Restaurant")]
+        [HttpPut("{id}/CancelOrder")]
+        [Authorize(Roles = "SuperAdmin,Customer,Restaurant")]
         //order iptal etme
         public async Task<IActionResult> CancelOrder(int id)
         {
@@ -152,15 +171,15 @@ namespace YemekSepeti.Controllers
             {
                 return BadRequest("There is no order with given id!");
             }
-            if (exactOrder.Status == "Delivered")
+            if (exactOrder.Status == "Delivered" || exactOrder.Status == "Preparing")
             {
                 return BadRequest("You can't cancel the delivered order");
             }
             else
             {
-                if (User.IsInRole("SuperAdmin") || (currentUser.Id == exactOrder.CustomerId || currentUser.Id == exactOrder.RestaurantId))
+                if ((currentUser.Id == exactOrder.CustomerId || currentUser.Id == exactOrder.RestaurantId))
                 {
-                    _context.Orders.Remove(exactOrder);
+                    exactOrder.Status = "Cancelled";
                     await _context.SaveChangesAsync();
                     return Ok("The order has been successfully cancelled");
                 }
@@ -181,6 +200,7 @@ namespace YemekSepeti.Controllers
             {
                 var restaurant = await _context.Restaurants
                     .Include(r => r.Orders)
+                    .ThenInclude(o => o.Meals)
                     .FirstOrDefaultAsync(r => r.Email == currentUser.Email);
 
                 if (restaurant == null)
@@ -191,13 +211,22 @@ namespace YemekSepeti.Controllers
             .FromSqlRaw("EXEC up_RestoranSiparisleriniAl @RestaurantId = {0}", restaurantId)
             .ToListAsync();
               
-                var orders1 = orders.Select(o => new OrderDTO
+                var orders1 = orders.Select(o => new DeliveryOrderDTO
                 {
+                    Id = o.Id,
                     TotalAmount = o.TotalAmount,
                     Status = o.Status, 
                     OrderDate = o.OrderDate,
                     CustomerId = o.CustomerId,
-                    RestaurantId = o.RestaurantId
+                    RestaurantId = o.RestaurantId,
+                    Meals = o.Meals
+                                .Select(m => m.Name)
+                                .ToList(),
+                    OrderCustomerName = _context.Customers.FirstOrDefault(c => c.Id == o.CustomerId).Name,
+                    OrderCustomerPhoneNumber = _context.Customers.FirstOrDefault(c => c.Id == o.CustomerId).PhoneNumber,
+                    OrderCustomerAddress = _context.Customers.FirstOrDefault(c => c.Id == o.CustomerId).Address,
+                    OrderRestaurantName = _context.Restaurants.FirstOrDefault(r => r.Id == o.RestaurantId).Name,
+                    OrderRestaurantPhoneNumber = _context.Restaurants.FirstOrDefault(r => r.Id == o.RestaurantId).PhoneNumber,
                 }).ToList();
 
                 return Ok(orders1);
