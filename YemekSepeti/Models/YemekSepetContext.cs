@@ -38,14 +38,19 @@ public partial class YemekSepetContext : IdentityDbContext<IdentityUser<int>,Ide
     public virtual DbSet<Restaurant> Restaurants { get; set; }
 
     public virtual DbSet<RestaurantReview> RestaurantReviews { get; set; }
+    public virtual DbSet<Notification> Notifications { get; set; }
 
- 
+
 
 
 
     protected override async void OnModelCreating(ModelBuilder modelBuilder)
     {
-
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Order>(entity =>
         {

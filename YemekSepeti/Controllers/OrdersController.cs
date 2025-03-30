@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Xml.Linq;
 using YemekSepeti.DTO;
 using YemekSepeti.Models;
+using YemekSepeti.Services;
 
 namespace YemekSepeti.Controllers
 {
@@ -15,10 +16,12 @@ namespace YemekSepeti.Controllers
     {
         private readonly YemekSepetContext _context;
         private readonly UserManager<IdentityUser<int>> _userManager;
-        public OrdersController(YemekSepetContext context, UserManager<IdentityUser<int>> userManager)
+        private readonly INotificationSender _notificationSender;
+        public OrdersController(YemekSepetContext context, UserManager<IdentityUser<int>> userManager,INotificationSender notificationSender)
         {
             _context = context;
             _userManager = userManager;
+            _notificationSender = notificationSender;
         }
         [HttpGet]
         //tum siparisleri getir
@@ -167,6 +170,12 @@ namespace YemekSepeti.Controllers
 
 
             Order? exactOrder = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id);
+            var customerEmail = _context.Customers.FirstOrDefault(c => c.Id == exactOrder.CustomerId).Email;
+            var customerUser = _userManager.FindByEmailAsync(customerEmail).Result.Id;
+            var restaurantEmail = _context.Restaurants.FirstOrDefault(c => c.Id == exactOrder.RestaurantId).Email;
+            var restaurantUser = _userManager.FindByEmailAsync(restaurantEmail).Result.Id;
+            var deliveryEmail = _context.DeliveryPersonnel.FirstOrDefault(c => c.Id == exactOrder.DeliveryPersonelId).Email;
+            var deliveryUser = _userManager.FindByEmailAsync(deliveryEmail).Result.Id;
             if (exactOrder == null)
             {
                 return BadRequest("There is no order with given id!");
@@ -179,6 +188,10 @@ namespace YemekSepeti.Controllers
             {
                 if ((currentUser.Id == exactOrder.CustomerId || currentUser.Id == exactOrder.RestaurantId))
                 {
+                    
+                    _notificationSender.SendNotification("Your order got cancelled!", customerUser);
+                    _notificationSender.SendNotification("Your order got cancelled!", restaurantUser);
+                    _notificationSender.SendNotification("Your order got cancelled!", deliveryUser);
                     exactOrder.Status = "Cancelled";
                     await _context.SaveChangesAsync();
                     return Ok("The order has been successfully cancelled");

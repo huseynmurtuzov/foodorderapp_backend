@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using YemekSepeti.Models;
 
@@ -11,9 +12,11 @@ using YemekSepeti.Models;
 namespace YemekSepeti.Migrations
 {
     [DbContext(typeof(YemekSepetContext))]
-    partial class YemekSepetContextModelSnapshot : ModelSnapshot
+    [Migration("20250329175339_changingType")]
+    partial class changingType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -435,9 +438,6 @@ namespace YemekSepeti.Migrations
 
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("bit");
 
                     b.Property<string>("Message")
                         .IsRequired()

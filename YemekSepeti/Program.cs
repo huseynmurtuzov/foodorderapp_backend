@@ -11,6 +11,7 @@ using YemekSepeti.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddTransient<IEmailSender, EmailSender>();
+builder.Services.AddTransient<INotificationSender, NotificationSender>();
 
 builder.Services.AddCors(options =>
 {
